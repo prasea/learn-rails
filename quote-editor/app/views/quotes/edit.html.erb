@@ -3,6 +3,7 @@
   <div class="header">
     <h1>Edit quote </h1>
   </div>
+  <%# Here dom_id(@quote) generates unique turbo-frame id: quote_1, quote_2, . . .  %>
   <%= turbo_frame_tag dom_id(@quote) do %>
     <%= render 'form', quote: @quote%>
   <% end %>

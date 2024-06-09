@@ -1,3 +1,4 @@
+<%# Here dom_id(quote) generates unique turbo-frame id: quote_1, quote_2, . . .  %>
 <%= turbo_frame_tag dom_id(quote) do %>
   <div class="quote">
     <%= link_to quote.name, quote_path(quote), data: {turbo_frame: "_top"}%>
