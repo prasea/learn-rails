@@ -1,0 +1,9 @@
+<%= form_with model: quote, class: 'quote form' do |f|%>
+  <% if quote.errors.any? %>
+    <div class="error-message">
+      <%= quote.errors.full_messages.to_sentence.capitalize %>
+    </div>
+  <% end %>
+  <%= f.text_field :name, { autofocus: true } %>
+  <%= f.submit class: "btn btn--secondary" %>
+<% end %>
