@@ -1,32 +1,13 @@
-<div id="<%= dom_id user %>">
-  <p>
-    <strong>Name:</strong>
-    <%= user.name %>
-  </p>
-
-  <p>
-    <strong>Email:</strong>
-    <%= user.email %>
-  </p>
-
-  <p>
-    <strong>City:</strong>
-    <%= user.city %>
-  </p>
-
-  <p>
-    <strong>State:</strong>
-    <%= user.state %>
-  </p>
-
-  <p>
-    <strong>Country:</strong>
-    <%= user.country %>
-  </p>
-
-  <p>
-    <strong>Phone:</strong>
-    <%= user.phone %>
-  </p>
-
-</div>
+<tr id="user_row_<%= user.id%>">
+  <td><%= user.name%></td>
+  <td><%= user.email%></td>
+  <td><%= user.city%></td>
+  <td><%= user.state%></td>
+  <td><%= user.country%></td>
+  <td><%= user.phone%></td>
+  <td>
+    <%= link_to "View", user_path(user), class: 'btn btn-info'%>
+    <%= link_to "Edit", edit_user_path(user), class: 'btn btn-success'%>
+    <%= link_to "Delete", user_path(user), method: :delete, data: {confirm: 'Are you sure?'}, class: 'btn btn-danger'%>
+  </td>
+</tr>
