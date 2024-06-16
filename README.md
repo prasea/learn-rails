@@ -410,3 +410,23 @@ And from movies controller's search action we use this partial.
   <%= link_to highlight(movie.title, params[:title_search]), movie%>
 <% end %>
 ```
+
+- Event after you clear the search term from search form, the previosly returned search result isn't cleared. One solution is to check if :title_search params is present or not,
+
+```
+
+  def search
+    if params[:title_search].present?
+      @movies = Movie.where("title ILIKE ?", "%#{params[:title_search]}%")
+    else
+      @movies = []
+    end
+    respond_to do |format|
+      format.turbo_stream do
+        render turbo_stream: [
+          turbo_stream.update("search_results", partial: "movies/search_results", locals: { movies: @movies })
+        ]
+      end
+    end
+  end
+```
