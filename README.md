@@ -88,3 +88,108 @@ Turbo did 2 things :
 
 1. Updated the form
 2. Added new message on top of messages list
+
+```erb
+[_message.html.erb]
+<div id="<%= dom_id message %>">
+  <p>
+    <strong>Body:</strong>
+    <%= message.body %>
+  </p>
+  <div>
+    <%= link_to "Edit", edit_message_path(message) %> |
+    <%= button_to "Delete", message, method: :delete %>
+  </div>
+</div>
+```
+
+Each message wrapper div has unique id because of `dom_id`.
+
+```
+[application.html.erb]
+  <%= Time.zone.now %>
+```
+
+When you Delete a message a page refresh occurs which can be validated by the change of time's value.
+
+TASK : Remove message using turbo_stream without page refresh
+
+```erb
+  def destroy
+    @message.destroy!
+
+    respond_to do |format|
+      # format.turbo_stream { render turbo_stream: turbo_stream.remove("message_#{@message.id}") }
+      format.turbo_stream { render turbo_stream: turbo_stream.remove(@message) }
+      format.html { redirect_to messages_url, notice: "Message was successfully destroyed." }
+      format.json { head :no_content }
+    end
+  end
+```
+
+## TODO : Render edit form without page refresh
+
+A better way to achieve this would be `turbo_frame` but we'll be using `turbo_stream`.
+
+```rb
+  def edit
+    respond_to do |format|
+      format.turbo_stream do
+        render turbo_stream: turbo_stream.update(@message, partial: "messages/form", locals: { message: @message })
+      end
+    end
+  end
+```
+
+Now, when you click Edit on index view we get `ActionController::UnknownFormat in MessagesController#edit`.
+Turbo Stream can respond to anything except GET while Turbo Frame can only respond to GET.
+
+The `edit` action issues GET request which can't be handled by TurboStream.
+
+The hack lies to make `edit` action respond with request other than GET. We change `routes.rb`,
+
+```rb
+  resources :messages do
+    member do
+      post :edit
+    end
+  end
+```
+
+Update the edit button on `_messages.html.erb` to issue POST request by changing link_to into button_to.
+
+```erb
+<div id="<%= dom_id message %>">
+  <p>
+    <strong>Body:</strong>
+    <%= message.body %>
+  </p>
+  <div>
+    <%= button_to "Edit", edit_message_path(message), method: :post %>
+    <%= button_to "Delete", message, method: :delete %>
+  </div>
+</div>
+
+```
+
+At the moment, when you click Edit button, the mesage gets updated with form to edit message but after you acutaly change message and click update button, the page gets refreshed. To avoid it, in `update` action we have to respond with turbo_stream. In case message is updated respond with message partial else respond with edit form partial.
+
+```rb
+  def update
+    respond_to do |format|
+      if @message.update(message_params)
+        format.turbo_stream do
+          render turbo_stream: turbo_stream.update(@message, partial: "messages/message", locals: { message: @message })
+        end
+        format.html { redirect_to message_url(@message), notice: "Message was successfully updated." }
+        format.json { render :show, status: :ok, location: @message }
+      else
+        format.turbo_stream do
+          render turbo_stream: turbo_stream.update(@message, partial: "messages/form", locals: { message: @message })
+        end
+        format.html { render :edit, status: :unprocessable_entity }
+        format.json { render json: @message.errors, status: :unprocessable_entity }
+      end
+    end
+  end
+```

@@ -3,5 +3,8 @@
     <strong>Body:</strong>
     <%= message.body %>
   </p>
-
+  <div>
+    <%= button_to "Edit", edit_message_path(message), method: :post %>
+    <%= button_to "Delete", message, method: :delete %>
+  </div>
 </div>
