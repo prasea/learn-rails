@@ -2,5 +2,5 @@
 <% movies.each do |movie|%>
   <br>
   <%= movie.title%>
-  <%= highlight(movie.title, params[:title_search])%>
+  <%= link_to highlight(movie.title, params[:title_search]), movie%>
 <% end %>

@@ -399,3 +399,14 @@ And from movies controller's search action we use this partial.
   <%= highlight(movie.title, params[:title_search])%>
 <% end %>
 ```
+
+- You can turn returned found search results into links,
+
+```
+<%= movies.count %>
+<% movies.each do |movie|%>
+  <br>
+  <%= movie.title%>
+  <%= link_to highlight(movie.title, params[:title_search]), movie%>
+<% end %>
+```
