@@ -193,3 +193,53 @@ At the moment, when you click Edit button, the mesage gets updated with form to 
     end
   end
 ```
+
+## TODO : Update the message count using turbo_stream
+
+In `index.html.erb`, `<%= Message.count %> Messages`. Message count should change when someone adds or destroy a message. But ATM, one has to manually refresh the page to see the change.
+
+```rb
+def create
+    @message = Message.new(message_params)
+
+    respond_to do |format|
+      if @message.save
+        format.turbo_stream do
+          render turbo_stream: [
+            turbo_stream.update("new_message", partial: "messages/form", locals: { message: Message.new }),
+            turbo_stream.prepend("messages", partial: "messages/message", locals: { message: @message }),
+            # turbo_stream.update("message_counter", html: "#{Message.count}"),
+            # turbo_stream.update("message_counter", html: Message.count),
+            turbo_stream.update("message_counter", Message.count)
+
+          ]
+        end
+        # Other codes as it is. . . .
+```
+
+In `index.html.erb`,
+
+```erb
+<h1>
+  <span id="message_counter"><%= Message.count %></span> Messages
+</h1>
+```
+
+Still message count doesn't get updates without page refresh in case of deleting. So,
+
+```rb
+  def destroy
+    @message.destroy!
+
+    respond_to do |format|
+      # format.turbo_stream { render turbo_stream: turbo_stream.remove("message_#{@message.id}") }
+      format.turbo_stream do
+          render turbo_stream: [
+            turbo_stream.remove(@message),
+            turbo_stream.update("message_counter", Message.count)
+          ]
+      end
+      # Rest of codes . . .
+```
+
+Now, when you add new message, the counter gets updated without page refresh.
