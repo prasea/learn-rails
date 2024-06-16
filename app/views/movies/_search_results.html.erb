@@ -1,0 +1,6 @@
+<%= movies.count %>
+<% movies.each do |movie|%>
+  <br>
+  <%= movie.title%>
+  <%= highlight(movie.title, params[:title_search])%>
+<% end %>

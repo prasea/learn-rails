@@ -360,3 +360,42 @@ Instead of displaying these useless information, we want to display the searched
     end
   end
 ```
+
+We managed to display quantity of search result using turbo_stream. Now let's actually render them. For that we have to create a partial.
+
+- Create file views/movies/\_search_results.html.erb
+
+```
+<%= movies.count %>
+<% movies.each do |movie|%>
+  <br>
+  <%= movie.title%>
+<% end %>
+
+```
+
+And from movies controller's search action we use this partial.
+
+```
+  def search
+    @movies = Movie.where("title ILIKE ?", "%#{params[:title_search]}%")
+    respond_to do |format|
+      format.turbo_stream do
+        render turbo_stream: [
+          turbo_stream.update("search_results", partial: "movies/search_results", locals: { movies: @movies })
+        ]
+      end
+    end
+  end
+```
+
+- If you want the search result be highlighted with searched term, we can use `highlight` component.
+
+```
+<%= movies.count %>
+<% movies.each do |movie|%>
+  <br>
+  <%= movie.title%>
+  <%= highlight(movie.title, params[:title_search])%>
+<% end %>
+```

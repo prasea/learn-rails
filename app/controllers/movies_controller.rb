@@ -62,8 +62,7 @@ class MoviesController < ApplicationController
     respond_to do |format|
       format.turbo_stream do
         render turbo_stream: [
-          # turbo_stream.update("search_results", params[:title_search]),
-          turbo_stream.update("search_results", @movies.count)
+          turbo_stream.update("search_results", partial: "movies/search_results", locals: { movies: @movies })
         ]
       end
     end
