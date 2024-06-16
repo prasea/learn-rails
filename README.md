@@ -242,4 +242,121 @@ Still message count doesn't get updates without page refresh in case of deleting
       # Rest of codes . . .
 ```
 
-Now, when you add new message, the counter gets updated without page refresh.
+To add flash notice message when CRUD operation is success. In `index.html.erb`, we have
+
+```
+<p id="notice" style="color: green">
+  <%= notice %>
+</p>
+```
+
+Hence in create, update and destroy action, add below turbo stream response with appropriate message,
+`format.html { redirect_to message_url(@message), notice: "Message was successfully updated !" }`
+
+# Ruby on Rails #60 Hotwire Turbo Streams Autocomplete Search
+
+List of movies where we can search and auto-complete search.
+To populate our movies table, we use `Faker`
+
+```
+  rails g scaffold Movies title:string
+  rails db:migrate
+  bundle add faker
+```
+
+- Validation on movies.rb model,
+
+```
+class Movie < ApplicationRecord
+  validates :title, presence: true, uniqueness: true
+end
+```
+
+- Seeding the data using Faker. db/seeds.rb
+
+```
+150.times do
+  Movie.create(title: Faker::Movie.unique.title)
+end
+```
+
+Now we need a search form in index. But before that let's create a search route. We won't pass movie_id into search action of controller, we'll only pass all the movies. Hence, we create `collection` instead of `member` route !
+
+- routes.rb
+
+```
+  resources :movies do
+    collection do
+      post :search
+    end
+  end
+```
+
+You could also use `get` for search request. But to be compatible with TurboStream, we have to use `post` so that we can respond update using turbo_stream. If you want to use TurboFrame, you can use get request too!
+
+- In movies/index.html.erb, add search form at top,
+
+```
+<%= form_with url: search_movies_path, method: :post do |form|%>
+  <%= form.search_field :title_search%>
+<% end %>
+<div id="search_results">
+  Search Results
+</div>
+
+```
+
+Here :title_search is the params that gets sent to movies controller's `search` action. Using this params value, we'll update value inside search_results div using turbo_stream,
+
+```
+  def search
+    respond_to do |format|
+      format.turbo_stream do
+        render turbo_stream: [
+          turbo_stream.update("search_results", params[:title_search])
+        ]
+      end
+    end
+  end
+```
+
+ATM we submit the search form by pressing Enter key. Let's automatically submit search form on input,
+
+```
+<%= form_with url: search_movies_path, method: :post do |form|%>
+  <%= form.search_field :title_search, oninput: "this.form.requestSubmit()"%>
+<% end %>
+<div id="search_results">
+  Search Results
+</div>
+```
+
+Each time type something on search form, form gets submitted with turbo_stream response from controller. For test purpose instead of populating params[:title_search], you could populate Time.zone.now,
+
+```
+  def search
+    respond_to do |format|
+      format.turbo_stream do
+        render turbo_stream: [
+          # turbo_stream.update("search_results", params[:title_search]),
+          turbo_stream.update("search_results", Time.zone.now)
+        ]
+      end
+    end
+  end
+```
+
+Instead of displaying these useless information, we want to display the searched movie if exits. First let's display the count of found movies,
+
+```
+  def search
+    @movies = Movie.where("title ILIKE ?", "%#{params[:title_search]}%")
+    respond_to do |format|
+      format.turbo_stream do
+        render turbo_stream: [
+          turbo_stream.update("search_results", @movies.count)
+        ]
+      end
+    end
+  end
+```
