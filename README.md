@@ -430,3 +430,67 @@ And from movies controller's search action we use this partial.
     end
   end
 ```
+
+- Move search query ILIKE from controller into model [movie.rb]
+
+```
+class Movie < ApplicationRecord
+  validates :title, presence: true, uniqueness: true
+
+  scope :filter_by_title, ->(title) { where("title ILIKE ?", "%#{title}%") }
+end
+```
+
+- [movies_controller.rb]
+
+```
+  def search
+    if params[:title_search].present?
+      # @movies = Movie.where("title ILIKE ?", "%#{params[:title_search]}%")
+      @movies = Movie.filter_by_title(params[:title_search])
+    else
+      @movies = []
+    end
+    respond_to do |format|
+    # Rest of code . . .
+```
+
+TODO: To improvise further, we're gonna use stimulus. ATM, we're using `oninput: "this.form.requestSubmit()"` on search input. If user type `the` 3 requests are made for each letter. We can limit this request by adding `delayed submit`. We're gonna submit after half seconds after use inputs something.
+
+- javascript/controller/debounce_controller.js
+
+```js
+import { Controller } from "@hotwired/stimulus";
+
+export default class extends Controller {
+  connect() {
+    console.log("Debounce controller connected !");
+  }
+
+  static targets = ["form"];
+
+  search() {
+    clearTimeout(this.timeout);
+    this.timeout = setTimeout(() => {
+      this.formTarget.requestSubmit();
+    }, 500);
+  }
+}
+```
+
+- \_search_form.html.erb
+
+```erb
+<%#= form_with url: search_movies_path, method: :post do |form|%>
+  <%#= form.search_field :title_search, oninput: "this.form.requestSubmit()"%>
+  <%# end %>
+
+  <%= form_with url: search_movies_path, method: :post, data: {controller: "debounce", debounce_target: "form"} do |form|%>
+    <%= form.search_field :title_search, data: {action: "input->debounce#search"}%>
+  <% end %>
+
+  <div id="search_results">
+    Search Results
+  </div>
+
+```
