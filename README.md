@@ -1,10 +1,12 @@
-# README
+# Ruby on Rails #59 Hotwire Turbo Streams CRUD
 
+```
 - rails new turboapp -d=postgresql
 - rails g scaffold message body:text
 
 - Use below simple css for styling in application.html.erb
    <link rel="stylesheet" href="https://cdn.simplecss.org/simple.min.css">
+```
 
 Task1: Add message without page refresh. So display form on index view.
 ` <%= render partial: "messages/form" , locals: {message: Message.new}%>`
