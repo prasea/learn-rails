@@ -1,0 +1,17 @@
+<%= turbo_frame_tag :modal do %>
+  <div data-controller="turbomodal" data-action="turbo:submit-end->turbomodal#submitEnd">
+
+    <% content_for :title, "New post" %>
+
+    <h1>New post</h1>
+
+    <%= render "form", post: @post %>
+
+    <br>
+
+    <div>
+      <%= link_to "Back to posts", posts_path %>
+    </div>
+  </div>
+
+<% end %>

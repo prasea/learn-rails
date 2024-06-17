@@ -496,3 +496,157 @@ export default class extends Controller {
   </div>
 
 ```
+
+# Ruby on Rails #63 Hotwire Modals (the right way)
+
+`rails g scaffold posts title body:text`
+
+- In application.html.erb, add turbo-frame so that we can open modal from anywhere in our app.
+  `<%= turbo_frame_tag :modal%>`
+
+When you click on `New post` on index view, you get below error,
+
+**Error: The response (200) did not contain the expected <turbo-frame id="modal"> and will be ignored. To perform a full page visit instead, set turbo-visit-control to reload.**
+
+After user clicks `New post`, the controller redirects to `new.html.erb` and it doesn't have corresponding turbo-frame with id :modal. Hence wrap all content of that view with,
+
+```
+<%= turbo_frame_tag :modal do %>
+# Contents as it is
+<% end %>
+```
+
+When you click on `Create Post` after filling title & body, you get below error,
+
+**Error: The response (200) did not contain the expected <turbo-frame id="modal"> and will be ignored. To perform a full page visit instead, set turbo-visit-control to reload.**
+
+After user clicks `Create Post`, the controller redirects to `show.html.erb` and it doesn't have corresponding turbo-frame with id :modal. Instead of controller redirecting to show view, we use turbo_stream to append newly added post in index view.
+
+- To achieve that `create` action of `posts_controller`,
+
+```
+ def create
+    @post = Post.new(post_params)
+
+    respond_to do |format|
+      if @post.save
+        format.turbo_stream do
+          render turbo_stream: turbo_stream.prepend("posts", partial: "posts/post", locals: { post: @post })
+        end
+        format.html { redirect_to post_url(@post), notice: "Post was successfully created." }
+```
+
+format.turbo_stream has higher precedence over format.html.
+
+Problems : The modal doesn't close after submitting valid form fields.Also if we don't have successfull form submission, we don't want to respond with turbo_stream and not dismiss the modal.
+
+In TurboHandbook, at 2. Navigate with TurboDrive, we have Form Submission `turbo:submit-end`.
+
+`rails g stimulus turbomodal`
+
+```
+[turbomodal_controller.js]
+import { Controller } from "@hotwired/stimulus"
+
+// Connects to data-controller="turbomodal"
+export default class extends Controller {
+  connect() {
+    console.log("Connected to turbomodal")
+  }
+  submitEnd(e) {
+    console.log(e)
+    console.log(e.detail.success)
+  }
+}
+```
+
+- posts/new.html.erb
+
+```erb
+<%= turbo_frame_tag :modal do %>
+  <div data-controller="turbomodal" data-action="turbo:submit-end->turbomodal#submitEnd">
+
+    <% content_for :title, "New post" %>
+
+    <h1>New post</h1>
+
+    <%= render "form", post: @post %>
+
+    <br>
+
+    <div>
+      <%= link_to "Back to posts", posts_path %>
+    </div>
+  </div>
+
+<% end %>
+
+```
+
+When you click `New Post`, stimulus controller gets connected. When you click `Create Post`, in console you'll see CustomEvent that contains success true/false on `e.detail.success` object. Based on the value of success, we'll show/hide modal.
+
+```js
+import { Controller } from "@hotwired/stimulus";
+
+// Connects to data-controller="turbomodal"
+export default class extends Controller {
+  // connect() {
+  //   console.log("Connected to turbomodal")
+  // }
+  submitEnd(e) {
+    if (e.detail.success) {
+      this.hideModal();
+    }
+  }
+
+  hideModal() {
+    this.element.remove();
+  }
+}
+```
+
+Here we have perfect combination of using turbo-frame, turbo_stream and stimulus.
+
+## TODO : Turbo modal to EDIT post.
+
+- First of all, in the Edit button, add turbo_frame_tag,
+  `<%= link_to "Edit this post", edit_post_path(@post), data: {turbo_frame: 'modal'} %>`
+
+- Just like with `New Post`, we wrapped `new.html.erb`. With `Edit Post`, we wrap `edit.html.erb`,
+
+```erb
+<%= turbo_frame_tag :modal do %>
+  <div data-controller="turbomodal" data-action="turbo:submit-end->turbomodal#submitEnd">
+
+    <% content_for :title, "Editing post" %>
+
+    <h1>Editing post</h1>
+
+    <%= render "form", post: @post %>
+
+    <br>
+
+    <div>
+      <%= link_to "Show this post", @post %> |
+      <%= link_to "Back to posts", posts_path %>
+    </div>
+  </div>
+<% end%>
+
+```
+
+- Finally in `posts_controller`,
+
+```
+  def update
+    respond_to do |format|
+      if @post.update(post_params)
+        format.turbo_stream do
+          render turbo_stream: turbo_stream.replace(@post, partial: "posts/post", locals: { post: @post })
+        end
+        # Rest of code . . .
+```
+
+RECAP: On New and Edit links we added `data-turbo-frame :modal` that targets application.html.erb's turbo_frame_tag :modal.
+We used **Rules 3: A link can target another frame than the one it is directly nested in thanks to the data-turbo-frame data attribute.**
+And on application.html.erb <turbo-frame id="modal"></turbo-frame>, it adds content from turbo_frame_tag of new & edit. Also we used stimlus to check if form submission was successful or not just to close modal.
