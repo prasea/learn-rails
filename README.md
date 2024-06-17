@@ -508,13 +508,65 @@ When you click on `New post` on index view, you get below error,
 
 **Error: The response (200) did not contain the expected <turbo-frame id="modal"> and will be ignored. To perform a full page visit instead, set turbo-visit-control to reload.**
 
-After user clicks `New post`, the controller redirects to `new.html.erb` and it doesn't have corresponding turbo-frame with id :modal. Hence wrap all content of that view with,
+After user clicks `New post`, the controller redirects to `new.html.erb` and it doesn't have corresponding turbo-frame with id :modal. Hence wrap all content of `new.html.erb` view with `turbo_frame_tag :modal`. But we use Deanin's modal,
 
 ```
 <%= turbo_frame_tag :modal do %>
-# Contents as it is
+  <div class="modal">
+    <h1>New post</h1>
+    <%= render "form", post: @post %>
+    <br>
+    <div>
+      <%= link_to "Cancel", "#", data: {
+        controller: "turbomodal",
+        action: "turbomodal#close"
+      }, class: "cancel-button" %>
+    </div>
+  </div>
 <% end %>
 ```
+
+- Let's style modal,
+
+```css
+[application.css] .modal {
+  position: fixed;
+  z-index: 1;
+  padding: 2em;
+
+  /* Centering */
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+
+  overflow: auto;
+  background-color: rgb(0, 0, 0);
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+  /* Add the drop shadow */
+  box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.2), 0 5px 10px 0 rgba(0, 0, 0, 0.19);
+}
+
+.cancel-button {
+  background-color: #1530ff;
+  font-size: 12px;
+  color: white;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  float: right;
+  text-decoration: none;
+}
+.cancel-button:hover {
+  background-color: #2640fe;
+}
+```
+
+Q. How to replace empty turbo_frame_tag on application.html.erb with our modal?
+`<%= link_to "New post", new_post_path, data: {turbo_frame: "modal"} %>`
+
+Now when user clicks `New Post`, instead of going to target `new_post_path`, it puts content of target(new_post_path aka new.html.erb) into turbo_frame_tag of application.html.erb.
 
 When you click on `Create Post` after filling title & body, you get below error,
 
@@ -601,6 +653,20 @@ export default class extends Controller {
 
   hideModal() {
     this.element.remove();
+  }
+
+  // This is Deanin's action method
+  close(e) {
+    e.preventDefault();
+    // Remove from parent
+    const modal = document.getElementById("modal");
+    modal.innerHTML = "";
+
+    // Remove the src attribute from the turbo-frame modal in application.html.erb
+    modal.removeAttribute("src");
+
+    // Remove complete attribute from the turbo-frame modal in application.html.erb
+    modal.removeAttribute("complete");
   }
 }
 ```
