@@ -13,5 +13,9 @@ class User < ApplicationRecord
     "Platform Engineer",
     "Fullstack Ruby on Rails",
     "Frontend Engineer"
-].freeze
+  ].freeze
+
+  def full_name
+    "#{first_name} #{last_name}".strip
+  end
 end
