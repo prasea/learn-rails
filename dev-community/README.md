@@ -1,24 +1,14 @@
 # README
+Building a developers community application in Rails 7.2
 
-This README would normally document whatever steps are necessary to get the
-application up and running.
 
-Things you may want to cover:
+# Install Twitter Bootstrap and Add Header-Footer partials
+Since we have `cssbundling-rails` gem. Run `rails css:install:bootstrap` 
 
-* Ruby version
+Running this command will generate app/assets/builds/applications.css containing all bootstrap's CSS properties. Also stylesheets/application.css becomes stylesheets/application.bootstrap.scss
 
-* System dependencies
+If it happens, Bootstrap is successfully installed in our project. Since bootstrap has dependency on popper js, we need to pin it, 
 
-* Configuration
-
-* Database creation
-
-* Database initialization
-
-* How to run the test suite
-
-* Services (job queues, cache servers, search engines, etc.)
-
-* Deployment instructions
-
-* ...
+`./bin/importmap pin boostrap` command will add below two lines in config/importmap.rb 
+pin "bootstrap" # @5.3.3
+pin "@popperjs/core", to: "@popperjs--core.js" # @2.11.8
