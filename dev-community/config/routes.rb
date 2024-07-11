@@ -1,6 +1,8 @@
 Rails.application.routes.draw do
   root "home#index"
   devise_for :users
+  # get "member/:id" => "members#show"
+  get "member/:id", to: "members#show", as: "member"
 
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 
