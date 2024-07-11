@@ -1,6 +1,6 @@
 <nav class="navbar navbar-expand-lg bg-body-tertiary">
   <div class="container-fluid">
-    <a class="navbar-brand" href="#">Navbar</a>
+    <%= link_to "Dev Community", root_path, class: "navbar-brand" %>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
@@ -9,9 +9,18 @@
         <li class="nav-item">
           <a class="nav-link active" aria-current="page" href="#">Home</a>
         </li>
-        <li class="nav-item">
-          <a class="nav-link" href="#">Link</a>
-        </li>
+        <% if user_signed_in? %>
+          <li class="nav-item">
+            <%= link_to "Profile", member_path(current_user), class: "nav-link"%>
+          </li>
+          <li class="nav-item">
+            <%= link_to "Logout", destroy_user_session_path, class: "nav-link", data: {turbo_method: 'DELETE', turbo_confirm: "Are you sure you want to logout? "}%>
+          </li>
+        <% else %>
+          <li class="nav-item">
+            <%= link_to "Sign In", new_user_session_path, class: "nav-link" %>
+          </li>
+        <% end %>
       </ul>
     </div>
   </div>
