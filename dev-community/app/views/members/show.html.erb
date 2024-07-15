@@ -24,12 +24,16 @@
           </div>
           <div class="col-lg-6">
             <div class="d-flex justify-content-end">
-              Edit About
+              <%= link_to edit_member_description_path(@user), data: {controller: "edit-user-description",} do %>
+                <i class="bi bi-pencil-fill"></i>
+              <% end %>
             </div>
           </div>
         </div>
 
-        <p class="lead"><%= @user.about%></p>
+        <%= render partial: "member_description", locals: {user: @user}%>
+        <%#= render "member_description", user: @user %>
+        <!-- <p class="lead" id="member-description"><%#= @user.about%></p> -->
       </div>
     </div>
   </div>
