@@ -5,8 +5,10 @@ export default class extends Controller {
   connect() {
     // Ensure the Bootstrap modal is initialized
     this.modal = new window.bootstrap.Modal(this.element, {
-      keyboard: false
+      keyboard: false,
+      backdrop: false
     })
+    console.log("The modal is ", this.modal)
     this.modal.show()
   }
 
