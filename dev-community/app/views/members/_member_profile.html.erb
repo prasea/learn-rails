@@ -1,0 +1,17 @@
+<div class="card mb-5" id="member-profile">
+  <div class="row">
+    <div class="col-lg-4">
+      <%= image_tag "user_avatar.png", class: "img-fluid"%>
+    </div>
+    <div class="col-lg-8 d-flex align-items-center">
+      <div class="card-body">
+        <h3 class="fw-bold"><%= user.full_name%></h3>
+        <p class="lead"><%= user.profile_title%></p>
+        <p class="lead text-primary"><%= user.country%></p>
+        <% if user_signed_in? && current_user == user%>
+          <%= link_to "Edit Profile", edit_member_profile_path, data: {controller: "edit-user-profile"}, class: "btn btn-primary" %>
+        <% end%>
+      </div>
+    </div>
+  </div>
+</div>

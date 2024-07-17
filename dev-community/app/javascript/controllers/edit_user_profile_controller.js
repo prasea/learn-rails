@@ -1,13 +1,13 @@
-// edit_user_description_controller.js
 import { Controller } from "@hotwired/stimulus"
 
+// Connects to data-controller="edit-user-profile"
 export default class extends Controller {
   connect() {
-    console.log("Edit user description button clicked")
+    console.log("Edit user profile button is clicked !")
   }
 
   initialize() {
-    this.element.setAttribute("data-action", "click->edit-user-description#showModal")
+    this.element.setAttribute("data-action", "click->edit-user-profile#showModal")
   }
 
   showModal(event) {

@@ -426,3 +426,230 @@ Also for _edit_descrition_popup.html.erb partial we'll pass the user as locals f
 <% end %>
 
 ```
+
+# Update user personal details with turbo-stream format
+
+-[routes.rb]
+```
+  get "edit_profile", to: "members#edit_profile", as: "edit_member_profile"
+  patch "update_profile", to: "members#update_profile", as: "update_member_profile"
+```
+
+- [members_controller.rb]
+```ruby
+class MembersController < ApplicationController
+  before_action :authenticate_user!, only: %i[edit_description update_description edit_profile update_profile]
+  def show
+    @user = User.find(params[:id])
+  end
+
+  def edit_description
+    respond_to do |format|
+      format.turbo_stream # Ensure Turbo Stream format is handled
+    end
+  end
+
+  def update_description
+    respond_to do |format|
+      if current_user.update(about: params[:user][:about])
+        format.turbo_stream { render turbo_stream: turbo_stream.replace("member-description", partial: "members/member_description", locals: { user: current_user }) }
+      else
+        format.html { render :edit_description }  # Handle validation errors if any
+      end
+    end
+  end
+
+  def edit_profile
+    respond_to do |format|
+      format.turbo_stream # Ensure Turbo Stream format is handled
+    end
+  end
+
+  def update_profile
+    
+  end
+
+  private
+  def user_params
+    params.require(:user).permit(:first_name, :last_name, :city, :state, :country, :pincode, :profile_title)
+  end
+end
+```
+
+
+- Generate the simulus controller that will change the request from text/html to TURBO_STREAM when Edit Profile button will be clicked 
+`rails g stimulus edit_user_profile`
+
+- [eidt_user_profile_controller.js]
+```js
+import { Controller } from "@hotwired/stimulus"
+
+// Connects to data-controller="edit-user-profile"
+export default class extends Controller {
+  connect() {
+    console.log("Edit user profile button is clicked !")
+  }
+
+  initialize() {
+    this.element.setAttribute("data-action", "click->edit-user-profile#showModal")
+  }
+
+  showModal(event) {
+    event.preventDefault();
+    const url = this.element.getAttribute("href");
+
+    fetch(url, {
+      headers: {
+        Accept: "text/vnd.turbo-stream.html"
+      }
+    })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.text();
+      })
+      .then(html => Turbo.renderStreamMessage(html))
+      .catch(error => console.error('There was a problem with the fetch operation:', error));
+  }
+}
+```
+
+
+In [show.html.erb] replace the card content where we display profile information with partial. Turbo Stream template will use it !
+`<%= render "member_profile", user: current_user%>` - DO NOT use this. I made this mistake. Use below locals `@user` available in show view as unique user from params.
+`<%= render "member_profile", user: @user%>`
+
+- [_member_profile.html.erb]
+```
+<div class="card mb-5" id="member-profile">
+  <div class="row">
+    <div class="col-lg-4">
+      <%= image_tag "user_avatar.png", class: "img-fluid"%>
+    </div>
+    <div class="col-lg-8 d-flex align-items-center">
+      <div class="card-body">
+        <h3 class="fw-bold"><%= user.full_name%></h3>
+        <p class="lead"><%= user.profile_title%></p>
+        <p class="lead text-primary"><%= user.country%></p>
+        <% if user_signed_in? && current_user == user%>
+          <%= link_to "Edit Profile", edit_member_profile_path, data: {controller: "edit-user-profile"}, class: "btn btn-primary" %>
+        <% end%>
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+- [edit_profile.turbo_stream.erb]
+```
+<%= turbo_stream.replace "remote_modal" do %>
+  <%= render "edit_profile_popup", user: current_user %>
+<% end %>
+```
+
+- [edit_profile_popup.html.erb]
+```erb
+<%= turbo_frame_tag :remote_modal, target: :_top do %>
+  <!-- Modal -->
+  <div class="modal" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true" data-controller="bs-modal">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h1 class="modal-title fs-5" id="exampleModalLabel">Edit Profile</h1>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <%= form_with model: user, url: update_member_profile_path, method: :patch do |form| %>
+          <div class="modal-body">
+            <div class="row">
+              <!-- Full Names -->
+              <div class="col-lg-6">
+                <div class="form-group">
+                  <%= form.label :first_name, class: "my-2" %>
+                  <%= form.text_field :first_name, class: "form-control" %>
+                </div>
+              </div>
+              <div class="col-lg-6">
+                <div class="form-group">
+                  <%= form.label :last_name, class: "my-2" %>
+                  <%= form.text_field :last_name, class: "form-control" %>
+                </div>
+              </div>
+            </div>
+
+            <!-- Address Information -->
+            <div class="row">
+              <div class="col-lg-6">
+                <div class="form-group">
+                  <%= form.label :city, class: "my-2" %>
+                  <%= form.text_field :city, class: "form-control" %>
+                </div>
+              </div>
+              <div class="col-lg-6">
+                <div class="form-group">
+                  <%= form.label :state, class: "my-2" %>
+                  <%= form.text_field :state, class: "form-control" %>
+                </div>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-lg-6">
+                <div class="form-group">
+                  <%= form.label :country, class: "my-2" %>
+                  <%= form.text_field :country, class: "form-control" %>
+                </div>
+              </div>
+              <div class="col-lg-6">
+                <div class="form-group">
+                  <%= form.label :contact_number, class: "my-2" %>
+                  <%= form.text_field :contact_number, class: "form-control" %>
+                </div>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-lg-12">
+                <div class="form-group">
+                  <%= form.label :profile_title, class: "my-2" %>
+                  <%= form.text_field :profile_title, class: "form-control" %>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <%= form.submit "Save", data: { action: "click->bs-modal#submitEnd" }, class: "btn btn-primary" %>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+<% end %>
+
+```
+
+
+- [members_controller.rb]
+```ruby
+def edit_profile
+    respond_to do |format|
+      format.turbo_stream # Ensure Turbo Stream format is handled
+    end
+  end
+
+  def update_profile
+    respond_to do |format|
+      if current_user.update(user_params)
+        format.turbo_stream { render turbo_stream: turbo_stream.replace("member-profile", partial: "members/member_profile", locals: { user: current_user }) }
+      else
+        format.html { render :edit_description }  # Handle validation errors if any
+      end
+    end
+  end
+
+  private
+  def user_params
+    params.require(:user).permit(:first_name, :last_name, :city, :state, :country, :pincode, :profile_title)
+  end
+```
