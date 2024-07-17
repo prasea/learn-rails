@@ -334,3 +334,95 @@ Provide locals to above partial from [show.html.erb]. The last one is the most l
 ```
 
 
+# Handling update operation for signed in users only
+
+- [show.html.erb]
+```
+<% if user_signed_in? && current_user == @user%>
+  <div class="col-lg-6">
+    <div class="d-flex justify-content-end">
+      <%= link_to edit_member_description_path(@user), data: {controller: "edit-user-description",} do %>
+        <i class="bi bi-pencil-fill"></i>
+      <% end %>
+    </div>
+  </div>
+<% end %>
+```
+
+Using just this devise helper function is fine but we'll use `before_action authenticate_user!` to force filter only authenticated user to certain action methods of members_controller.
+
+- [members_controller.rb]
+```
+class MembersController < ApplicationController
+  before_action :authenticate_user!, only: %i[edit_description update_description]
+  def show
+    @user = User.find(params[:id])
+  end
+
+  def edit_description
+    respond_to do |format|
+      format.turbo_stream # Ensure Turbo Stream format is handled
+    end
+  end
+
+  def update_description
+    respond_to do |format|
+      if current_user.update(about: params[:user][:about])
+        format.turbo_stream { render turbo_stream: turbo_stream.replace("member-description", partial: "members/member_description", locals: { user: current_user }) }
+      else
+        format.html { render :edit_description }  # Handle validation errors if any
+      end
+    end
+  end
+end
+
+```
+Since only authenticated user can access the edit_description & update_description action methods, the corresponding views will have access to `current_user` devise helper method.  
+
+As we're not extracting the user id from params, we need to change routes, 
+```
+get "edit_description", to: "members#edit_description", as: "edit_member_description"
+patch "update_description", to: "members#update_description", as: "update_member_description"
+```
+
+Also for _edit_descrition_popup.html.erb partial we'll pass the user as locals from [edit_description.turbo_stream.erb]
+```
+<%= turbo_stream.replace "remote_modal" do %>
+  <%= render "edit_description_popup", user: current_user %>
+<% end %>
+```
+
+
+[_edit_descrition_popup.html.erb]
+```
+<%= turbo_frame_tag :remote_modal, target: :_top do%>
+  <!-- Modal -->
+  <div class="modal" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true" data-controller="bs-modal">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h1 class="modal-title fs-5" id="exampleModalLabel">Modal title</h1>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <%= form_with model: user, url: update_member_description_path, method: :patch do |form|%>
+          <div class="modal-body">
+            <div class="row">
+              <div class="col-lg-12">
+                <div class="form-group">
+                  <%= form.label :description, class: "mb-3"%>
+                  <%= form.text_area :about, value: user.about, class: "form-control", rows: 15%>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <%= form.submit "Save", data: {action: "click->bs-modal#submitEnd" }, class: "btn btn-primary"%>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+<% end %>
+
+```

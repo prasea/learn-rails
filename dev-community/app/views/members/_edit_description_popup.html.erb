@@ -7,13 +7,13 @@
           <h1 class="modal-title fs-5" id="exampleModalLabel">Modal title</h1>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <%= form_with model: @user, url: update_member_description_path(@user), method: :patch do |form|%>
+        <%= form_with model: user, url: update_member_description_path, method: :patch do |form|%>
           <div class="modal-body">
             <div class="row">
               <div class="col-lg-12">
                 <div class="form-group">
                   <%= form.label :description, class: "mb-3"%>
-                  <%= form.text_area :about, value: @user.about, class: "form-control", rows: 15%>
+                  <%= form.text_area :about, value: user.about, class: "form-control", rows: 15%>
                 </div>
               </div>
             </div>
