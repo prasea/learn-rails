@@ -653,3 +653,179 @@ def edit_profile
     params.require(:user).permit(:first_name, :last_name, :city, :state, :country, :pincode, :profile_title)
   end
 ```
+
+
+# Refactoring stimulus controller to display bootstrap modal - Part I
+
+One common partial for rendering boostrap modal and then we can use this partial at all places where we need to display bootstrap modal using turbo stream. 
+At the moment, we're rendering [_edit_profile_popup.html.erb] & [_edit_description_popup.html.erb] from [edit_profile.turbo_stream.erb] and [edit_description.turbo_stream.erb]. Both these partial consist of common boostrap modal codes. Let's use dynamic partial. 
+
+
+- [shared/_turbo_modal.html.erb]
+```erb
+<%= turbo_frame_tag :remote_modal, target: :_top do%>
+  <!-- Modal -->
+  <div class="modal" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true" data-controller="bs-modal">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h1 class="modal-title fs-5" id="exampleModalLabel"><%= modal_title%></h1>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <%= render form_partial, user: user%>
+      </div>
+    </div>
+  </div>
+<% end %>
+```
+
+`form_partial` locals is dynamically supplied from edit profile & description turbo stream templates. Also note that `user` locals supplied will be only available on "shared/turbo_modal" partial. We have to again pass `user` locals to respective form partials. 
+
+- [edit_profile.turbo_stream.erb]
+```
+<%= turbo_stream.replace "remote_modal" do %>
+  <%#= render "edit_profile_popup", user: current_user %>
+  <%= render "shared/turbo_modal", user: current_user, modal_title: "Edit Profile", form_partial: "members/edit_profile_popup" %>
+<% end %>
+```
+
+- [edit_description.turbo_stream.erb]
+```
+<%= turbo_stream.replace "remote_modal" do %>
+  <%#= render "edit_description_popup", user: current_user %>
+  <%= render "shared/turbo_modal", user: current_user, modal_title: "Edit Description", form_partial: "members/edit_description_popup" %>
+<% end %>
+```
+
+- [_edit_profile_popup.html.erb]
+```
+<%= form_with model: user, url: update_member_profile_path, method: :patch do |form| %>
+  <div class="modal-body">
+    <div class="row">
+      <!-- Full Names -->
+      <div class="col-lg-6">
+        <div class="form-group">
+          <%= form.label :first_name, class: "my-2" %>
+          <%= form.text_field :first_name, class: "form-control" %>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="form-group">
+          <%= form.label :last_name, class: "my-2" %>
+          <%= form.text_field :last_name, class: "form-control" %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Address Information -->
+    <div class="row">
+      <div class="col-lg-6">
+        <div class="form-group">
+          <%= form.label :city, class: "my-2" %>
+          <%= form.text_field :city, class: "form-control" %>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="form-group">
+          <%= form.label :state, class: "my-2" %>
+          <%= form.text_field :state, class: "form-control" %>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-lg-6">
+        <div class="form-group">
+          <%= form.label :country, class: "my-2" %>
+          <%= form.text_field :country, class: "form-control" %>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="form-group">
+          <%= form.label :contact_number, class: "my-2" %>
+          <%= form.text_field :contact_number, class: "form-control" %>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-lg-12">
+        <div class="form-group">
+          <%= form.label :profile_title, class: "my-2" %>
+          <%= form.text_field :profile_title, class: "form-control" %>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <%= form.submit "Save", data: { action: "click->bs-modal#submitEnd" }, class: "btn btn-primary" %>
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+  </div>
+<% end %>
+
+```
+
+- [_edit_description_popup.html.erb]
+```
+<%= form_with model: user, url: update_member_description_path, method: :patch do |form|%>
+  <div class="modal-body">
+    <div class="row">
+      <div class="col-lg-12">
+        <div class="form-group">
+          <%= form.label :description, class: "mb-3"%>
+          <%= form.text_area :about, value: user.about, class: "form-control", rows: 15%>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <%= form.submit "Save", data: {action: "click->bs-modal#submitEnd" }, class: "btn btn-primary"%>
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+  </div>
+<% end %>
+```
+
+# Refactoring stimulus controller to display bootstrap modal - Part II
+
+Currently we have two different stimulus controllers [edit_user_profile_controller.js] and [edit_user_description_controller.js] serving similar purpose of changing the request/response from HTML to TURBO_STREAM. Instead use generic controller `Turbo`
+
+
+- [turbo_controller.js]
+```js
+// edit_user_description_controller.js
+import { Controller } from "@hotwired/stimulus"
+
+export default class extends Controller {
+  connect() {
+    console.log("Edit user description button clicked")
+  }
+
+  initialize() {
+    this.element.setAttribute("data-action", "click->turbo#showModal")
+  }
+
+  showModal(event) {
+    event.preventDefault();
+    const url = this.element.getAttribute("href");
+
+    fetch(url, {
+      headers: {
+        Accept: "text/vnd.turbo-stream.html"
+      }
+    })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.text();
+      })
+      .then(html => Turbo.renderStreamMessage(html))
+      .catch(error => console.error('There was a problem with the fetch operation:', error));
+  }
+}
+
+```
+
+Wherever you had used the previous two controller in DOM replace with `turbo`
+
+### [Hotwire Modals - Drifting Ruby](https://www.youtube.com/watch?v=9aYaVq-e7VU)

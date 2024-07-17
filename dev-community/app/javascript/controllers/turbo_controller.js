@@ -7,7 +7,7 @@ export default class extends Controller {
   }
 
   initialize() {
-    this.element.setAttribute("data-action", "click->edit-user-description#showModal")
+    this.element.setAttribute("data-action", "click->turbo#showModal")
   }
 
   showModal(event) {
