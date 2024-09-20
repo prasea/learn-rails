@@ -3,7 +3,7 @@ Building a developers community application in Rails 7.2
 
 
 # Install Twitter Bootstrap and Add Header-Footer partials
-Since we have `cssbundling-rails` gem. Run `rails css:install:bootstrap` 
+Since we have `cssbundling-rails` gem. Run `rails css:install:bootstrap` to install boostrap in your project 
 
 Running this command will generate app/assets/builds/applications.css containing all bootstrap's CSS properties. Also stylesheets/application.css becomes stylesheets/application.bootstrap.scss
 
@@ -14,24 +14,169 @@ pin "bootstrap" # @5.3.3
 pin "@popperjs/core", to: "@popperjs--core.js" # @2.11.8
 
 
+Create header & footer partial in [views/shared] and render it from [application.html.erb]
 
-# Ransack Gem !
+# Create User Model for Authentication using Devise Gem
+rails g devise:install 
+
+- Generate devise user model with custom attributes 
+`rails g devise user first_name last_name date_of_birth:date username city  state country pincode street_address profile_title about:text`
+
+In generate migration file, we'll uncomment the **Trackable** devise module's attributes and also uncomment it from the generate [user.rb] model. 
+
+# Using Faker gem to generate dummy data for user model
+
+We forgot to add the `contact_number` attribute to users table
+`rails g migration add_contact_number_to_users contact_number:string`
+
+
+- Creating a pre-defined values for `profile_title` attribue 
+[models/user.rb]
+```ruby
+  PROFILE_TITLE = [
+    "Junior Ruby on Rails",
+    "Mid Level Ruby on Rails",
+    "Senior Ruby on Rails",
+    "Software Engineer",
+    "QA Engineer",
+    "Platform Engineer",
+    "Fullstack Ruby on Rails",
+    "Frontend Engineer"
+  ].freeze
+```
+
+#### Create a database seed 
+- The value of `date_of_birth` will be atleast 24 years of age. 
+[db/seeds.rb]
+```ruby
+User.destroy_all
+ActiveRecord::Base.transaction do
+  100.times do  |i|
+    user = User.create!(
+      first_name: Faker::Name.first_name,
+      last_name: Faker::Name.last_name,
+      username: "#{Faker::Name.first_name}-#{i+5}",
+      profile_title: User::PROFILE_TITLE.sample,
+      email: Faker::Internet.email,
+      password: "password",
+      date_of_birth:(Date.today + rand(1..30).days) - rand(24..35).years,
+      country: Faker::Address.country,
+      state: Faker::Address.state,
+      city: Faker::Address.city,
+      pincode: Faker::Address.postcode,
+      contact_number: Faker::PhoneNumber.phone_number_with_country_code,
+      about:"As a seasoned Full Stack Software Engineer, I bring a wealth of expertise in designing and implementing robust, scalable applications. Proficient in both front-end and back-end technologies, I excel in creating seamless user experiences and efficient server-side solutions. My skill set includes JavaScript, React, Ruby on Rails, Node.js, and database management with SQL and NoSQL. With a passion for continuous learning and staying abreast of industry trends, I thrive in collaborative environments and enjoy tackling complex problems. My commitment to code quality and best practices ensures the delivery of high-performing, maintainable software solutions."
+    )
+    puts "User #{i+1} created !"
+  end
+end
+```
+
+# Working with Bootstrap Grid System to Display List of Users
+In [route.rb], the root path is `root "home#index"`
+
+[home_controller.rb]
+```ruby 
+class HomeController < ApplicationController
+  def index
+    @users = User.all
+  end
+end
+```
+
+
+[views/home/index.html.erb]
+```html
+<div class="col-lg-10 mx-auto mt-5">
+  <div class="row mt-4 mb-4">
+    <% @users.each do |user|%>
+      <div class="col-lg-3 b-3 mt-3">
+        <div class="card text-center shadow" style="min-height: 400px;">
+          <div class="card-body">
+            <%= image_tag "user_avatar.png", style: "width: 150px; border-radius: 50%; border: 2px solid #53e9fu;" %>
+            <div class="user-info">
+              <h5><%= user.full_name%></h5>
+              <p class="lead"><%= user.profile_title%></p>
+              <small class="text-primary"><%= user.country%></small><br>
+              <%= link_to "View Profile", "javscript:void(0)", class: "btn btn-primary mt-3" %>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>
+```
+
+Instead of calling `user.first_name` and `user.last_name`, we called `user.full_name`. But that `full_name` method must be present in User model,
+```ruby 
+def full_name
+  "#{first_name} #{last_name}".strip
+end
+```
+
+`style="min-height: 400px;"` was added to make all the card equi-height. 
+
+
+Instead of showing all database records, let's implement a `limit` to only show few user records in user view. 
+
+[home_controller.rb]
+```ruby 
+class HomeController < ApplicationController
+  def index
+    # @users = User.all
+    @users = User.limit(16).order(created_at)
+  end
+end
+```
+
+
+# Working with Bootstrap Input Group and Rails forms
+Let's create an search form UI. It won't be functional for now. we'll use bootstrap's input group component to have input and button side-by-side.
+[index.html.erb]
+```html
+  <div class="card mt-4 mb-4">
+    <div class="card-body">
+      <div class="text-center mb-3">Search developers across the world!</div>
+      <div class="input-group mb-3">
+        <input type="text" class="form-control" placeholder="Search by country or city" aria-label="Search by country or city" aria-describedby="button-addon">
+        <button type="button" id="button-addon" class="btn btn-primary">Search</button>
+      </div>
+    </div>
+  </div>
+```
+
+
+# Implement user search using Ransack Gem
+[Extensive documentation on Ransack](https://activerecord-hackery.github.io/ransack/)
+
+Update the [home_controller.rb]
+```ruby
+class HomeController < ApplicationController
+  def index
+    # @users = User.all
+    @q = User.ransack(params[:q])
+    @users = @q.result().limit(20).order(:created_at)
+  end
+end
+```
+
+
 With ransack search form, we had to use `url` because we're not using the search form on the resource controller's index action. We're using it on custom controller's index action i.e. Home's index not User's index. Whenever user performs search it will take to this URL
 
 
 - views/home/index.html.erb 
-
-```erb
+```html
 <div class="col-lg-10 mx-auto mt-5">
   <div class="card mt-4 mb-4">
     <div class="card-body">
       <div class="text-center mb-3">Search developers across the world!</div>
       <%= search_form_for @q, url: root_path do |f| %>
         <div class="input-group mb-3">
-          <%= f.search_field :country_or_city_cont, class: "form-control", placeholder: "Search by country or city" %>
+          <%# <input type="text" class="form-control" placeholder="Search by country or city" aria-label="Search by country or city" aria-describedby="button-addon">          
+          <%= f.search_field :country_or_city_cont, class: "form-control", placeholder: "Search by country or city", area: { label: "Search  by country or city", describedby: "button-addon" } %>
 
-          <%= f.submit "Search", class: "btn btn-primary"%>
-          <%# <input type="text" class="form-control" placeholder="Search by country or city" aria-label="Search by country or city" aria-describedby="button-addon">
+          <%= f.submit "Search", class: "btn btn-primary", id: "button-addon"%>
         <button type="button" id="button-addon" class="btn btn-primary">Search</button> %>
         </div>
       <% end %>
@@ -58,24 +203,29 @@ With ransack search form, we had to use `url` because we're not using the search
 ```
 
 
-Since we're searching by city or country name, we have to provide it in User model. 
-
-```
+Since we're searching by city or country name, we have to provide it in User model.  
+```ruby
   def self.ransackable_attributes(auth_object = nil)
     ["country", "city"]
   end
 ```
 
 Since we're searching with two attributes, we also need to provide association in User model. If you had only user country for searching, then error won't occur and you won't have to write below line in User model. 
-```
+```ruby
   def self.ransackable_associations(auth_object = nil)
     []
   end
 ```
 
+If still you get, NoMethodError in HomeController#index
+**undefined method `with_connection' for an instance of ActiveRecord::ConnectionAdapters::PostgreSQLAdapter**
+Did you mean? raw_connection
+[View this PR to solve](https://github.com/activerecord-hackery/ransack/pull/1493)
+`bundle show ransack` to get the path where ransack is installed. 
+
 
 # Working on user details action and custom routing
-
+Though we're working on the **user** resource, we're not creating `users_controller` to avoid conflict with devise routes. We'll create a separate `members_controller` that'll operate on the user resource. 
 
 - [members_controller.rb]
 ```ruby
@@ -87,15 +237,15 @@ end
 ```
 
 - [routes.rb]
-```
+```ruby
   # get "member/:id" => "members#show"
   get "member/:id", to: "members#show", as: "member"
 ```
 
-The first/traditional way of creating route won't generate the route helper path/url. In index.html.erb, you're forced to use `<%#= link_to "View Profile", "/member/#{user.id}", class: "btn btn-primary mt-3" %>`. However with second way to creating route, you can use both, 
+The first/traditional way of creating route won't generate the route helper path/url. In [home/index.html.erb], you're forced to use `<%#= link_to "View Profile", "/member/#{user.id}", class: "btn btn-primary mt-3" %>`. However with second way to creating route, you can use both, 
 
-- index.html.erb
-```
+[home/index.html.erb]
+```erb
 <%#= link_to "View Profile", "/member/#{user.id}", class: "btn btn-primary mt-3" %>
 <%= link_to "View Profile", member_path(user.id), class: "btn btn-primary mt-3" %>
 ```
